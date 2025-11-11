@@ -42,11 +42,13 @@ public class ValueClassPlugin {
 
         for (DescriptorProto message : file.getMessageTypeList()) {
             // Generate value class
-            String valueClass = ValueClassGenerator.generate(message, javaPackage);
+            ValueClassGenerator valueClassGenerator = new ValueClassGenerator(javaPackage, message);
+            String valueClass = valueClassGenerator.generate();
             addFile(response, javaPackage, message.getName() + ".java", valueClass);
 
             // Generate builder class
-            String builderClass = BuilderGenerator.generate(message, javaPackage);
+            BuilderGenerator builderGenerator = new BuilderGenerator(javaPackage, message);
+            String builderClass = builderGenerator.generate();
             addFile(response, javaPackage, message.getName() + "Builder.java", builderClass);
         }
     }

@@ -9,10 +9,15 @@ class ProtoUtils {
 
 
     static String getJavaType(FieldDescriptorProto field) {
+        String baseJavaType = getBaseJavaType(field);
         if (isRepeatedField(field)) {
-            return "List<" + getBaseJavaType(field) + ">";
+            return "List<" + boxPrimitive(baseJavaType) + ">";
         }
-        return getBaseJavaType(field);
+        return baseJavaType;
+    }
+
+    static boolean isRepeatedField(FieldDescriptorProto field) {
+        return field.getLabel() == FieldDescriptorProto.Label.LABEL_REPEATED;
     }
 
     static String getBaseJavaType(FieldDescriptorProto field) {
@@ -49,6 +54,23 @@ class ProtoUtils {
                 return enumName.substring(enumName.lastIndexOf('.') + 1);
             default:
                 return "Object";
+        }
+    }
+
+    private static String boxPrimitive(String type) {
+        switch (type) {
+            case "int":
+                return "Integer";
+            case "long":
+                return "Long";
+            case "float":
+                return "Float";
+            case "double":
+                return "Double";
+            case "boolean":
+                return "Boolean";
+            default:
+                return type; // Non-primitives like String, ByteString, etc.
         }
     }
 
@@ -228,10 +250,6 @@ class ProtoUtils {
         }
     }
 
-    static boolean isRepeatedField(FieldDescriptorProto field) {
-        return field.getLabel() == FieldDescriptorProto.Label.LABEL_REPEATED;
-    }
-
     static void appendParameters(StringBuilder sb, DescriptorProto message) {
         boolean first = true;
         for (FieldDescriptorProto field : message.getFieldList()) {
@@ -265,9 +283,12 @@ class ProtoUtils {
     static String getSingularName(String plural) {
         if (plural.endsWith("ies")) {
             return plural.substring(0, plural.length() - 3) + "y";
-        } else if (plural.endsWith("s")) {
+        } else if (plural.endsWith("sses") || plural.endsWith("shes") || plural.endsWith("ches") || plural.endsWith("xes") || plural.endsWith("zes")) {
+            return plural.substring(0, plural.length() - 2);
+        } else if (plural.endsWith("s") && !plural.endsWith("ss")) {
             return plural.substring(0, plural.length() - 1);
         }
         return plural;
     }
+
 }

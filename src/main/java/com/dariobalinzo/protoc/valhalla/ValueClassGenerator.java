@@ -8,8 +8,17 @@ import static com.dariobalinzo.protoc.valhalla.ProtoUtils.*;
  */
 public class ValueClassGenerator {
 
-    public static String generate(DescriptorProto message, String pkg) {
-        StringBuilder sb = new StringBuilder();
+    private final StringBuilder sb = new StringBuilder();
+    private final String pkg;
+    private final DescriptorProto message;
+
+    public ValueClassGenerator(String pkg, DescriptorProto message) {
+        this.pkg = pkg;
+        this.message = message;
+    }
+
+
+    public String generate() {
         String className = message.getName();
 
         // Package and imports
@@ -43,33 +52,33 @@ public class ValueClassGenerator {
         sb.append("\n");
 
         // Constructor
-        generateConstructor(sb, message, className);
+        generateConstructor(className);
 
         // Getters
-        generateGetters(sb, message);
+        generateGetters();
 
         // With methods (immutable updates)
-        generateWithMethods(sb, message, className);
+        generateWithMethods(className);
 
         // Static factory
-        generateStaticFactory(sb, message, className);
+        generateStaticFactory(className);
 
         // Builder factories
-        generateBuilderFactories(sb, className);
+        generateBuilderFactories(className);
 
         // Custom parser
-        generateParser(sb, message, className);
+        generateParser(className);
 
         // Custom serialization
-        generateSerialization(sb, message, className);
+        generateSerialization();
 
         sb.append("}\n");
         return sb.toString();
     }
 
-    private static void generateConstructor(StringBuilder sb, DescriptorProto message, String className) {
+    private void generateConstructor(String className) {
         sb.append("    public ").append(className).append("(");
-        appendParameters(sb, message);
+        appendParameters();
         sb.append(") {\n");
         for (FieldDescriptorProto field : message.getFieldList()) {
             String name = field.getName();
@@ -84,7 +93,7 @@ public class ValueClassGenerator {
         sb.append("    }\n\n");
     }
 
-    private static void generateGetters(StringBuilder sb, DescriptorProto message) {
+    private void generateGetters() {
         for (FieldDescriptorProto field : message.getFieldList()) {
             String methodName = "get" + capitalize(field.getName());
             sb.append("    public ").append(getJavaType(field));
@@ -94,7 +103,7 @@ public class ValueClassGenerator {
         }
     }
 
-    private static void generateWithMethods(StringBuilder sb, DescriptorProto message, String className) {
+    private void generateWithMethods(String className) {
         for (FieldDescriptorProto field : message.getFieldList()) {
             String methodName = "with" + capitalize(field.getName());
             sb.append("    public ").append(className);
@@ -112,14 +121,14 @@ public class ValueClassGenerator {
         }
     }
 
-    private static void generateStaticFactory(StringBuilder sb, DescriptorProto message, String className) {
+    private void generateStaticFactory(String className) {
         sb.append("    public static ").append(className).append(" getDefaultInstance() {\n");
         sb.append("        return new ").append(className).append("(");
-        appendDefaults(sb, message);
+        appendDefaults();
         sb.append(");\n    }\n\n");
     }
 
-    private static void generateBuilderFactories(StringBuilder sb, String className) {
+    private void generateBuilderFactories(String className) {
         sb.append("    public static ").append(className).append("Builder newBuilder() {\n");
         sb.append("        return new ").append(className).append("Builder();\n");
         sb.append("    }\n\n");
@@ -129,7 +138,7 @@ public class ValueClassGenerator {
         sb.append("    }\n\n");
     }
 
-    private static void generateParser(StringBuilder sb, DescriptorProto message, String className) {
+    private void generateParser(String className) {
         sb.append("""
                 /**
                  * Custom parser - constructs value class directly from wire format
@@ -204,7 +213,7 @@ public class ValueClassGenerator {
         sb.append("    }\n\n");
     }
 
-    private static void generateSerialization(StringBuilder sb, DescriptorProto message, String className) {
+    private void generateSerialization() {
         sb.append("""
                 /**
                  * Custom serialization - writes value class directly to wire format
@@ -231,14 +240,14 @@ public class ValueClassGenerator {
                 sb.append("        for (").append(getBaseJavaType(field)).append(" item : ");
                 sb.append("this.").append(name).append(") {\n");
                 sb.append("            ");
-                generateWriteStatement(sb, field, "item", fieldNumber);
+                generateWriteStatement(field, "item", fieldNumber);
                 sb.append("        }\n");
             } else {
                 // Handle singular fields - only write if not default
                 String defaultCheck = getDefaultCheck(field).replace(name, "this." + name);
                 sb.append("        if (").append(defaultCheck).append(") {\n");
                 sb.append("            ");
-                generateWriteStatement(sb, field, "this." + name, fieldNumber);
+                generateWriteStatement(field, "this." + name, fieldNumber);
                 sb.append("        }\n");
             }
         }
@@ -246,10 +255,10 @@ public class ValueClassGenerator {
         sb.append("    }\n\n");
 
         // Add getSerializedSize method
-        generateGetSerializedSize(sb, message);
+        generateGetSerializedSize();
     }
 
-    private static void generateWriteStatement(StringBuilder sb, FieldDescriptorProto field,
+    private void generateWriteStatement(FieldDescriptorProto field,
                                                String varName, int fieldNumber) {
         String writeMethod = getWriteMethod(field);
 
@@ -275,7 +284,7 @@ public class ValueClassGenerator {
         }
     }
 
-    private static void generateGetSerializedSize(StringBuilder sb, DescriptorProto message) {
+    private void generateGetSerializedSize() {
         sb.append("""
                 /**
                  * Computes the serialized size of this message
@@ -292,13 +301,13 @@ public class ValueClassGenerator {
                 sb.append("        for (").append(getBaseJavaType(field)).append(" item : ");
                 sb.append("this.").append(name).append(") {\n");
                 sb.append("            size += ");
-                generateSizeExpression(sb, field, "item", fieldNumber);
+                generateSizeExpression(field, "item", fieldNumber);
                 sb.append(";\n        }\n");
             } else {
                 String defaultCheck = getDefaultCheck(field).replace(name, "this." + name);
                 sb.append("        if (").append(defaultCheck).append(") {\n");
                 sb.append("            size += ");
-                generateSizeExpression(sb, field, "this." + name, fieldNumber);
+                generateSizeExpression(field, "this." + name, fieldNumber);
                 sb.append(";\n        }\n");
             }
         }
@@ -307,7 +316,7 @@ public class ValueClassGenerator {
         sb.append("    }\n\n");
     }
 
-    private static void generateSizeExpression(StringBuilder sb, FieldDescriptorProto field,
+    private void generateSizeExpression(FieldDescriptorProto field,
                                                String varName, int fieldNumber) {
         switch (field.getType()) {
             case TYPE_MESSAGE:
@@ -380,7 +389,7 @@ public class ValueClassGenerator {
         }
     }
 
-    private static void appendParameters(StringBuilder sb, DescriptorProto message) {
+    private void appendParameters() {
         boolean first = true;
         for (FieldDescriptorProto field : message.getFieldList()) {
             if (!first) sb.append(", ");
@@ -389,7 +398,7 @@ public class ValueClassGenerator {
         }
     }
 
-    private static void appendDefaults(StringBuilder sb, DescriptorProto message) {
+    private void appendDefaults() {
         boolean first = true;
         for (FieldDescriptorProto field : message.getFieldList()) {
             if (!first) sb.append(", ");

@@ -110,10 +110,30 @@ class ProtoUtilsTest {
 
     @Test
     void testGetSingularName() {
+        // simple plural
         assertThat(ProtoUtils.getSingularName("items")).isEqualTo("item");
+        assertThat(ProtoUtils.getSingularName("cats")).isEqualTo("cat");
+
+        // -ies ending
         assertThat(ProtoUtils.getSingularName("cities")).isEqualTo("city");
+        assertThat(ProtoUtils.getSingularName("ladies")).isEqualTo("lady");
+
+        // -es endings (common plural forms)
+        assertThat(ProtoUtils.getSingularName("boxes")).isEqualTo("box");
+        assertThat(ProtoUtils.getSingularName("wishes")).isEqualTo("wish");
+        assertThat(ProtoUtils.getSingularName("churches")).isEqualTo("church");
+        assertThat(ProtoUtils.getSingularName("buzzes")).isEqualTo("buzz");
+
+        // words ending with "ss" should stay the same
         assertThat(ProtoUtils.getSingularName("address")).isEqualTo("address");
+        assertThat(ProtoUtils.getSingularName("class")).isEqualTo("class");
+        assertThat(ProtoUtils.getSingularName("glass")).isEqualTo("glass");
+
+        // already singular
+        assertThat(ProtoUtils.getSingularName("dog")).isEqualTo("dog");
+        assertThat(ProtoUtils.getSingularName("city")).isEqualTo("city");
     }
+
 
     @Test
     void testGetJavaPackage() {

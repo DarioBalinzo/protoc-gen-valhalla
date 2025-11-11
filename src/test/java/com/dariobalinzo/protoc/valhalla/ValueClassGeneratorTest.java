@@ -16,7 +16,8 @@ class ValueClassGeneratorTest {
                 .addField(field(2, "age", FieldDescriptorProto.Type.TYPE_INT32))
                 .build();
 
-        String generatedCode = ValueClassGenerator.generate(message, "com.example");
+        var valueClassGenerator = new ValueClassGenerator("com.example", message);
+        String generatedCode = valueClassGenerator.generate();
 
         assertThat(generatedCode).contains("public value class Person");
         assertThat(generatedCode).contains("private final String name;");

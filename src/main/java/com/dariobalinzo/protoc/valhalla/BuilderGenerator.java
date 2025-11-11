@@ -8,8 +8,16 @@ import static com.dariobalinzo.protoc.valhalla.ProtoUtils.*;
  */
 public class BuilderGenerator {
 
-    public static String generate(DescriptorProto message, String pkg) {
-        StringBuilder sb = new StringBuilder();
+    private final StringBuilder sb = new StringBuilder();
+    private final String pkg;
+    private final DescriptorProto message;
+
+    public BuilderGenerator(String pkg, DescriptorProto message) {
+        this.pkg = pkg;
+        this.message = message;
+    }
+
+    public String generate() {
         String className = message.getName();
         String builderName = className + "Builder";
 
@@ -26,28 +34,28 @@ public class BuilderGenerator {
             """.formatted(className, builderName));
 
         // Mutable fields
-        generateFields(sb, message);
+        generateFields();
 
         // Default constructor
         sb.append("    public ").append(builderName).append("() {}\n\n");
 
         // Copy constructor
-        generateCopyConstructor(sb, message, className, builderName);
+        generateCopyConstructor(className, builderName);
 
         // Setters
-        generateSetters(sb, message, builderName);
+        generateSetters(builderName);
 
         // Getters
-        generateGetters(sb, message);
+        generateGetters();
 
         // Build method
-        generateBuildMethod(sb, message, className);
+        generateBuildMethod(className);
 
         sb.append("}\n");
         return sb.toString();
     }
 
-    private static void generateFields(StringBuilder sb, DescriptorProto message) {
+    private void generateFields() {
         for (FieldDescriptorProto field : message.getFieldList()) {
             sb.append("    private ").append(getJavaType(field));
             sb.append(" ").append(field.getName());
@@ -56,8 +64,7 @@ public class BuilderGenerator {
         sb.append("\n");
     }
 
-    private static void generateCopyConstructor(StringBuilder sb, DescriptorProto message,
-                                                String className, String builderName) {
+    private void generateCopyConstructor(String className, String builderName) {
         sb.append("    public ").append(builderName).append("(").append(className);
         sb.append(" original) {\n");
         for (FieldDescriptorProto field : message.getFieldList()) {
@@ -68,7 +75,7 @@ public class BuilderGenerator {
         sb.append("    }\n\n");
     }
 
-    private static void generateSetters(StringBuilder sb, DescriptorProto message, String builderName) {
+    private void generateSetters(String builderName) {
         for (FieldDescriptorProto field : message.getFieldList()) {
             String name = field.getName();
             String methodName = "set" + capitalize(name);
@@ -96,7 +103,7 @@ public class BuilderGenerator {
         }
     }
 
-    private static void generateGetters(StringBuilder sb, DescriptorProto message) {
+    private void generateGetters() {
         for (FieldDescriptorProto field : message.getFieldList()) {
             String methodName = "get" + capitalize(field.getName());
             sb.append("    public ").append(getJavaType(field));
@@ -106,7 +113,7 @@ public class BuilderGenerator {
         }
     }
 
-    private static void generateBuildMethod(StringBuilder sb, DescriptorProto message, String className) {
+    private void generateBuildMethod(String className) {
         sb.append("    public ").append(className).append(" build() {\n");
         sb.append("        return new ").append(className).append("(");
         boolean first = true;

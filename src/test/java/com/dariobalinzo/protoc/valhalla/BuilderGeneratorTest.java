@@ -16,7 +16,8 @@ class BuilderGeneratorTest {
                 .addField(field(2, "age", FieldDescriptorProto.Type.TYPE_INT32))
                 .build();
 
-        String generatedCode = BuilderGenerator.generate(message, "com.example");
+        var builderGenerator = new BuilderGenerator("com.example", message);
+        String generatedCode = builderGenerator.generate();
 
         assertThat(generatedCode).contains("public class PersonBuilder");
         assertThat(generatedCode).contains("private String name = \"\";");
