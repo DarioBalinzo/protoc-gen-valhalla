@@ -1,223 +1,145 @@
 # protoc-gen-valhalla
 
-A Protocol Buffer compiler plugin that generates JEP 401 Value Classes with custom serialization.
+An experimental Protocol Buffer compiler plugin that generates [JEP 401 Value Classes](https://openjdk.org/jeps/401) for high-performance serialization.
 
-## Features
+> ⚠️ **Experimental Project**: Built for fun and experimentation with JEP 401 ahead of Java 26. Use with caution in production.
 
-- **Value Classes**: Generates immutable, identity-free JEP 401 value classes
-- **Custom Parsing**: Direct construction from wire format without intermediate builder objects
-- **Custom Serialization**: Direct serialization to wire format for maximum performance
-- **Separate Builders**: Mutable builder pattern for constructing value classes
-- **Immutable Updates**: `with*` methods for creating modified copies
+## Why This Exists
+
+JEP 401 Value Classes will likely become a cornerstone for frameworks requiring high-performance, memory-efficient data structures. This project explores what Protocol Buffer code generation could look like with value classes.
+
+The standard `protobuf-java` library generates classes extending `com.google.protobuf.GeneratedMessage`, which cannot be value classes. This plugin bypasses that limitation by generating standalone value classes with custom Protocol Buffer serialization.
+
+## Performance Highlights
+
+## 🧭 Summary of Results: Valhalla Protobuf vs Standard Java Protobuf (Average & Percentile Performance)
+For benchmarks I used an **early access build of Java 26** with `--enable-preview` to run both the generated value class code and the standard protobuf code. 
+The benchmarks focus on parsing, field access, sorting, and array allocation for messages with repeated fields.
+
+| Operation | Small Arrays (≈10 K) | Large Arrays (≈100 K) | Latency Distribution |
+|------------|----------------------|------------------------|----------------------|
+| **Field Access** | ≈ same | ⚡ **faster (~15%)** | ✅ tighter tail |
+| **Parsing** | ⚡ **slightly faster (~3–5%)** | ⚡ **faster (~6–8%)** | ✅ tighter tail |
+| **Sorting** | 🚫 **slower (~2–3×)** | 🚫 **slower (~2×)** | ✅ fewer outliers |
+| **Parsing + Sorting** | ≈ same | ⚡ **faster (~6%)** | ✅ tighter tail |
+| **Array Allocation** | ≈ same | ⚡ **slightly faster (~2–4%)** | ✅ smoother |
 
 ## Requirements
 
-- Java 21+ to run this plugin and generate the code. Java 26+ with `--enable-preview` to run the generated code.
-- Maven 3.8+
-- Protocol Buffers compiler (protoc)
+- **Java 21+**: To compile the plugin
+- **Java 26+ with `--enable-preview`**: To run generated code and benchmarks
+- Protocol Buffers compiler (`protoc`)
 
-## Building
+## Quick Start
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/protoc-gen-valhalla.git
-cd protoc-gen-valhalla
-
-# Build the project
+# Build the plugin
 mvn clean package
 
-# This creates target/protoc-gen-value.jar
-```
-
-## Installation
-
-### Option 1: Using the JAR directly
-
-```bash
-# Create a wrapper script (protoc-gen-value.sh)
-cat > protoc-gen-value.sh << 'EOF'
-#!/bin/bash
-java --enable-preview -jar /path/to/target/protoc-gen-value.jar
-EOF
-
-chmod +x protoc-gen-value.sh
-```
-
-### Option 2: Install to local bin
-
-```bash
-# Copy to local bin directory
-mkdir -p ~/.local/bin
-cp target/protoc-gen-value.jar ~/.local/bin/
-cat > ~/.local/bin/protoc-gen-value << 'EOF'
-#!/bin/bash
-java --enable-preview -jar ~/.local/bin/protoc-gen-value.jar
-EOF
-
-chmod +x ~/.local/bin/protoc-gen-value
-```
-
-## Usage
-
-### Basic Example
-
-Create a proto file (`example.proto`):
-
-```protobuf
-syntax = "proto3";
-
-package example;
-
-option java_package = "com.example.proto";
-
-message Person {
-  string name = 1;
-  int32 age = 2;
-  repeated string emails = 3;
-}
-```
-
-Generate value classes:
-
-```bash
-protoc --plugin=protoc-gen-value=./protoc-gen-value.sh \
+# Generate value classes from your .proto file
+protoc --plugin=protoc-gen-value=./target/protoc-gen-value \
        --value_out=./generated \
-       example.proto
+       your_message.proto
 ```
 
-This generates:
-- `com/example/proto/Person.java` - Immutable value class
-- `com/example/proto/PersonBuilder.java` - Mutable builder
+## Generated Code
 
-### Using Generated Classes
+Creates two files per message:
 
-```java
-// Using the builder
-Person person = Person.newBuilder()
-    .setName("Alice")
-    .setAge(30)
-    .addEmail("alice@example.com")
-    .build();
-
-// Serialization
-byte[] bytes = person.toByteArray();
-
-// Deserialization
-Person parsed = Person.parseFrom(bytes);
-
-// Immutable updates
-Person updated = person
-    .withName("Bob")
-    .withAge(25);
-
-// Convert to builder for complex updates
-Person modified = person.toBuilder()
-    .setAge(31)
-    .addEmail("alice2@example.com")
-    .build();
-```
-
-## Generated Code Structure
-
-### Value Class
-
+**1. Immutable Value Class** (identity-free, custom serialization)
 ```java
 public value class Person {
     private final String name;
     private final int age;
-    private final List<String> emails;
     
-    // Constructor
-    public Person(String name, int age, List<String> emails) { ... }
+    // Direct wire format parsing (no intermediate objects)
+    public static Person parseFrom(byte[] data) { ... }
     
-    // Getters
-    public String getName() { ... }
-    public int getAge() { ... }
-    public List<String> getEmails() { ... }
+    // Direct wire format serialization
+    public byte[] toByteArray() { ... }
     
     // Immutable updates
     public Person withName(String value) { ... }
-    public Person withAge(int value) { ... }
-    
-    // Factories
-    public static Person getDefaultInstance() { ... }
-    public static PersonBuilder newBuilder() { ... }
-    public PersonBuilder toBuilder() { ... }
-    
-    // Custom parsing (no intermediate objects)
-    public static Person parseFrom(byte[] data) { ... }
-    
-    // Custom serialization
-    public byte[] toByteArray() { ... }
-    public void writeTo(CodedOutputStream output) { ... }
-    public int getSerializedSize() { ... }
 }
 ```
 
-### Builder Class
-
+**2. Mutable Builder**
 ```java
 public class PersonBuilder {
-    private String name = "";
-    private int age = 0;
-    private List<String> emails = List.of();
-    
-    // Setters (fluent API)
     public PersonBuilder setName(String value) { ... }
-    public PersonBuilder setAge(int value) { ... }
-    public PersonBuilder setEmails(List<String> value) { ... }
-    
-    // Adders for repeated fields
-    public PersonBuilder addEmail(String value) { ... }
-    
-    // Build immutable value class
     public Person build() { ... }
 }
 ```
 
+## Usage Example
+
+```java
+// Build
+Person person = Person.newBuilder()
+    .setName("Alice")
+    .setAge(30)
+    .build();
+
+// Serialize
+byte[] bytes = person.toByteArray();
+
+// Deserialize (direct construction, no builder)
+Person parsed = Person.parseFrom(bytes);
+
+// Immutable update
+Person updated = person.withAge(31);
+```
+
 ## Supported Types
 
-| Proto Type | Java Type |
-|------------|-----------|
-| int32, sint32, sfixed32 | int |
-| int64, sint64, sfixed64 | long |
-| uint32, fixed32 | int |
-| uint64, fixed64 | long |
-| float | float |
-| double | double |
+| Proto | Java |
+|-------|------|
+| int32, int64, uint32, uint64 | int, long |
+| float, double | float, double |
 | bool | boolean |
 | string | String |
 | bytes | ByteString |
 | message | Generated value class |
-| repeated | List<T> |
+| repeated | List\<T\> |
 
-## Performance Benefits
+## Limitations
 
-The generated code avoids intermediate objects during parsing and serialization:
+- **Not production-ready**: Missing features like maps, oneofs, and comprehensive protobuf options
+- **No standard protobuf API compatibility**: Cannot be used as drop-in replacement
+- **Sorting performance**: Value class copying makes sorting operations slower
+- **JEP 401 is in preview**: Requires `--enable-preview` flag
 
-1. **Direct Construction**: Value classes are constructed directly from the wire format
-2. **No Builder Allocation**: Parsing doesn't allocate temporary builder objects
-3. **Optimized Serialization**: Direct write to output stream without intermediate buffers
+## When to Use
 
-## Testing
+✅ **Good for:**
+- Parsing-heavy workloads (deserialization-focused services)
+- Memory-constrained environments (flattened arrays, no object headers)
+- Latency-sensitive systems (better tail latencies)
+- Experimenting with JEP 401
+
+❌ **Avoid for:**
+- Frequent sorting or reordering operations
+- Need for full protobuf API compatibility
+- Production systems (for now)
+
+## Running Benchmarks
 
 ```bash
-# Run all tests
-mvn test
-
-# Run specific test
-mvn test -Dtest=ProtoUtilsTest
+# Requires Java 26+ with --enable-preview
+cd benchmarks
+mvn clean package
+java --enable-preview -jar target/benchmarks.jar
 ```
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-[Add your license here]
 
 ## References
 
 - [JEP 401: Value Classes and Objects](https://openjdk.org/jeps/401)
-- [Protocol Buffers](https://developers.google.com/protocol-buffers)
-- [Protoc Plugin Guide](https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.compiler.plugin)
+- [Protocol Buffers Plugin Guide](https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.compiler.plugin)
+
+## License
+
+MIT
+
+---
+
+**Note**: This is a research project exploring future Java capabilities. Feedback and experimentation welcome, but use caution before deploying to production systems.
