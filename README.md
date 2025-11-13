@@ -16,6 +16,10 @@ The standard `protobuf-java` library generates classes extending `com.google.pro
 For benchmarks I used an **early access build of Java 26** with `--enable-preview` to run both the generated value class code and the standard protobuf code. 
 The benchmarks focus on parsing, field access, sorting, and array allocation for messages with repeated fields.
 
+The benchmarks focused on deserialization and on some array operations show a mix of performance improvements and regressions:
+- **Field Access**: Slightly faster on large arrays due to reduced indirection and better cache locality.
+- **Sorting**: Slower due to the overhead of copying value
+
 | Operation | Small Arrays (≈10 K) | Large Arrays (≈100 K) | Latency Distribution |
 |------------|----------------------|------------------------|----------------------|
 | **Field Access** | ≈ same | ⚡ **faster (~15%)** | ✅ tighter tail |
