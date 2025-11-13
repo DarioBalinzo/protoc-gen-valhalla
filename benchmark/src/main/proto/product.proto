@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package com.dariobalinzo.demo.valhalla;
+
+option java_package = "com.dariobalinzo.demo.valhalla";
+option java_multiple_files = true;
+
+message Product {
+  int32 id = 1;
+  string name = 2;
+  double price = 3;
+  string description = 4;
+  int32 stock_quantity = 6;
+
+  uint64 sku = 7;           // Stock-Keeping Unit
+  float weight_kg = 8;      // Weight in kilograms
+  float length_cm = 9;      // Length in centimeters
+  float width_cm = 10;      // Width in centimeters
+  float height_cm = 11;     // Height in centimeters
+  double volume_liters = 12;// Volume in liters
+  int32 review_count = 13;  // Number of reviews
+  float average_rating = 14;// Average rating (e.g. 0.0 - 5.0)
+  int64 sales_count = 15;   // Lifetime sales count
+  int32 warranty_months = 16; // Warranty period in months
+
+  // Boolean flags
+  bool is_returnable = 17;
+  bool is_discontinued = 18;
+  bool is_featured = 19;
+
+}
